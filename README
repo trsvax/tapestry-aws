@@ -1,0 +1,59 @@
+
+
+Tapestry AWS services
+
+This package depends on tapestry-aws-core.
+
+So far the only this here is a log4j Amazon SNS appender. The appender is exposed as a service so you can set levels, filters etc.
+The back end of the appender is Amazon SNS. This allows people/machines to subscribe to notifications instead of hard coding them
+into the log4.properties file. It's also very fast. The following instructions assume you already know how Amazon SNS works.
+
+
+
+First create an appender in log4j.properties
+
+log4j.appender.T1=com.trsvax.tapestry.aws.services.impl.Log4jAppenderImpl
+log4j.appender.T1.layout=org.apache.log4j.PatternLayout
+log4j.appender.T1.layout.ConversionPattern=[%p] %c{2} %m%n
+
+
+Next add the following to your AppModule. Be sure and add your ARNs and make sure the appender names match. There
+are other ways to add your AWSCredentials (see the Amazon documentation). While SNS messages are pretty cheap it's
+probably best not to configure a DEGUG or INFO ARN. The services are set to eagerload so you get logging up quickly
+and preventReloading is needing because reloading tries to log.
+
+    public static void bind(ServiceBinder binder)
+    {
+		binder.bind(AWSCredentials.class, new ServiceBuilder<AWSCredentials>() {
+			public AWSCredentials buildService(ServiceResources serviceResources) {
+				try {
+					return new PropertiesCredentials( new File(System.getProperty("AWS-INI")));
+				} catch (Exception e) {
+					e.printStackTrace();
+				} 
+				return null;
+			}
+		});
+    	binder.bind(ServiceAppender.class,AWSAppenderImpl.class).eagerLoad().preventReloading();
+        binder.bind(ThresholdAppender.class, new ServiceBuilder<ThresholdAppender>() {
+			public ThresholdAppender buildService(ServiceResources resources) {
+				return ((Log4jAppenderImpl) org.apache.log4j.Logger.getRootLogger().getAppender("T1")).withResources(resources);
+			}
+		}).eagerLoad().preventReloading();
+    }
+    
+    public static void contributeServiceAppender(MappedConfiguration<Level,String> configuration)
+    {
+        configuration.add(Level.ERROR, "yourErrorArn");
+        configuration.add(Level.FATAL, "yourFatalArn");
+    } 
+    
+
+If you are using a property file you'll need to add this to your VM arguments.
+    -DAWS-INI=/pathToFile/keys.ini
+    
+The keys.ini file contains:
+accessKey=yourAccessKey
+secretKey=yourSecretKey
+
+    
