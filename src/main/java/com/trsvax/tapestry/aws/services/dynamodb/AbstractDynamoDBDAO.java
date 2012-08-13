@@ -1,5 +1,6 @@
 package com.trsvax.tapestry.aws.services.dynamodb;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -8,7 +9,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import javax.mail.MethodNotSupportedException;
 
 import org.apache.tapestry5.ValueEncoder;
 import org.apache.tapestry5.ioc.annotations.Inject;
@@ -20,22 +20,28 @@ import com.amazonaws.services.dynamodb.datamodeling.DynamoDBHashKey;
 import com.amazonaws.services.dynamodb.datamodeling.DynamoDBMapper;
 import com.amazonaws.services.dynamodb.datamodeling.DynamoDBMapperConfig;
 import com.amazonaws.services.dynamodb.datamodeling.DynamoDBQueryExpression;
+import com.amazonaws.services.dynamodb.datamodeling.DynamoDBRangeKey;
 import com.amazonaws.services.dynamodb.datamodeling.DynamoDBScanExpression;
 import com.amazonaws.services.dynamodb.model.AttributeValue;
 
 public abstract class AbstractDynamoDBDAO<T> implements DynamoDBDAO<T> {
 	private final DynamoDBMapper mapper;
-	private final Method keyMethod;
+	private final Method hashKeyMethod;
+	private final Method rangeKeyMethod;
 	private final Class<T> clazz;
 	
 	@Inject
 	private Logger logger;
 
 	
-	public AbstractDynamoDBDAO(AmazonDynamoDB client, Class<T> clazz) throws MethodNotSupportedException {
+	public AbstractDynamoDBDAO(AmazonDynamoDB client, Class<T> clazz)  {
 		this.mapper = new DynamoDBMapper(client);
 		this.clazz = clazz;
-		keyMethod = findKeyMethod(clazz);
+		hashKeyMethod = findMethod(clazz,DynamoDBHashKey.class);
+		if ( hashKeyMethod == null ) {
+			throw new RuntimeException("No DynamoDBHashKey for " + clazz.getName());
+		}
+		rangeKeyMethod = findMethod(clazz, DynamoDBRangeKey.class);
 	}
 	
 	public int count(DynamoDBQueryExpression queryExpression) {
@@ -154,9 +160,22 @@ public abstract class AbstractDynamoDBDAO<T> implements DynamoDBDAO<T> {
 			public ValueEncoder<T> create(Class<T> type) {
 				return new ValueEncoder<T>() {
 					public String toClient(T entity) {
-						return getKey(entity);
+						if ( rangeKeyMethod != null ) {
+							return getHashKey(entity) + "-" + getRangeKey(entity);
+						}
+						return getHashKey(entity);
 					}
 					public T toValue(String key) {
+						if ( rangeKeyMethod != null ) {
+							String[] keys = key.split("-",2);
+							logger.info("keys {} {}",keys[0],keys[1]);
+							if ( Integer.class.isAssignableFrom(rangeKeyMethod.getReturnType())) {
+								return load(keys[0], new Integer(keys[1]));
+							}
+							return load(keys[0],keys[1]);
+						}
+						logger.info("key {}",key);
+
 						return load(key);
 					}
 				};
@@ -164,22 +183,31 @@ public abstract class AbstractDynamoDBDAO<T> implements DynamoDBDAO<T> {
 		};
 	}
 	
-	String getKey(Object entity) {
+	String getHashKey(Object entity) {
 		try {
-			return keyMethod.invoke(entity).toString();
+			return hashKeyMethod.invoke(entity).toString();
 		} catch (Exception e) {
-			logger.error("getKey " + entity  + " method "+ keyMethod + " message " + e.getMessage());
-			throw new RuntimeException("getKey " + entity  + " method "+ keyMethod + " message " + e.getMessage());
+			logger.error("getKey " + entity  + " method "+ hashKeyMethod + " message " + e.getMessage());
+			throw new RuntimeException("getKey " + entity  + " method "+ hashKeyMethod + " message " + e.getMessage());
 		}				
 	}
 	
-	Method findKeyMethod(Class<T> clazz) throws MethodNotSupportedException {
+	String getRangeKey(Object entity) {
+		try {
+			return rangeKeyMethod.invoke(entity).toString();
+		} catch (Exception e) {
+			logger.error("getKey " + entity  + " method "+ hashKeyMethod + " message " + e.getMessage());
+			throw new RuntimeException("getKey " + entity  + " method "+ hashKeyMethod + " message " + e.getMessage());
+		}
+	}
+	
+	Method findMethod(Class<T> clazz, Class<? extends Annotation> annotation)  {
 		for (Method m : clazz.getMethods()) {
-	         if (m.isAnnotationPresent(DynamoDBHashKey.class)) {
-	               return m;	            
-	         }
-	      }
-		throw new UnsupportedOperationException("Can't find @DynamoDBHashKey for " + clazz.getCanonicalName());
+		     if (m.isAnnotationPresent(annotation)) {
+		           return m;	            
+		     }
+		}
+		return null;
 	}
 	
 	private RuntimeException runtime(Exception e) {
