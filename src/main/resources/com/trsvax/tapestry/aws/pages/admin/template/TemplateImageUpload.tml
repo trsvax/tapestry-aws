@@ -1,0 +1,13 @@
+<html t:type="layout" title="Template Image Upload"
+      xmlns:t="http://tapestry.apache.org/schema/tapestry_5_3.xsd"
+      xmlns:p="tapestry:parameter">
+      
+      <t:form>
+        <t:errors/>
+        <input t:type="upload" t:id="file" t:value="file" validate="required"/>
+        <br/>
+        <input type="submit" value="Upload"/>
+    </t:form>
+
+      
+</html>

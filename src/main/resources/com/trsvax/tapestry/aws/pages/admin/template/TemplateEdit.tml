@@ -1,0 +1,18 @@
+<html t:type="layout" title="Template ${key}"
+      xmlns:t="http://tapestry.apache.org/schema/tapestry_5_3.xsd"
+      xmlns:p="tapestry:parameter">
+      
+    <t:beaneditform object="this" />
+    
+        <t:pagelink page="aws/admin/template/imageUpload" context="key">add image</t:pagelink><br/>
+    
+    <t:loop source="images" value="image">
+    <img width="300px" src="http://assets.judypaul.com.s3.amazonaws.com/${image}"/> http://assets.judypaul.com.s3.amazonaws.com/${image}<br/>
+    </t:loop>
+    
+    <br/>
+    <br/>
+    <br/>
+    
+    
+</html>

@@ -1,0 +1,12 @@
+<html t:type="layout" title="Templates"
+      xmlns:t="http://tapestry.apache.org/schema/tapestry_5_3.xsd"
+      xmlns:p="tapestry:parameter">
+      
+      <t:pagelink page="aws/admin/template/new" fwtype="btn">New Template</t:pagelink>
+     <t:grid t:id="templates" add="edit">
+     <p:editCell>
+     	<t:pagelink page="aws/admin/template/edit" context="cell:key.value">edit</t:pagelink>
+     </p:editCell>
+     </t:grid>
+      
+</html>
