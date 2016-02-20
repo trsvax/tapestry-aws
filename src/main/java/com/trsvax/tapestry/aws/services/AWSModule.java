@@ -1,5 +1,7 @@
 package com.trsvax.tapestry.aws.services;
 
+import java.util.Map;
+
 import org.apache.tapestry5.ioc.Configuration;
 import org.apache.tapestry5.ioc.MappedConfiguration;
 import org.apache.tapestry5.ioc.ServiceBinder;
@@ -10,8 +12,11 @@ import org.apache.tapestry5.services.ApplicationStatePersistenceStrategy;
 import org.apache.tapestry5.services.AssetFactory;
 import org.apache.tapestry5.services.LibraryMapping;
 
+import com.amazonaws.services.dynamodbv2.datamodeling.AttributeTransformer;
 import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBMapper;
 import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBMapperConfig;
+import com.amazonaws.services.dynamodbv2.datamodeling.AttributeTransformer.Parameters;
+import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.trsvax.tapestry.aws.AWSConstants;
 import com.trsvax.tapestry.aws.internal.DynamoDBApplicationStatePersistenceStrategy;
 import com.trsvax.tapestry.aws.services.impl.EmailImpl;
@@ -30,6 +35,26 @@ public class AWSModule {
 				return DynamoDBMapperConfig.DEFAULT;
 			}
 		});
+		
+		binder.bind(AttributeTransformer.class, new ServiceBuilder<AttributeTransformer>() {
+
+			public AttributeTransformer buildService(ServiceResources resources) {
+				return new AttributeTransformer() {
+					
+					public Map<String, AttributeValue> untransform(Parameters<?> parameters) {
+						// TODO Auto-generated method stub
+						return parameters.getAttributeValues();
+					}
+					
+					public Map<String, AttributeValue> transform(Parameters<?> parameters) {
+						// TODO Auto-generated method stub
+						return parameters.getAttributeValues();
+					}
+				};
+			}
+		});
+		
+		
 
         binder.bind(DynamoDBMapper.class, new ServiceBuilder<DynamoDBMapper>() {
 
